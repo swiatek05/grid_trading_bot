@@ -19,12 +19,7 @@ def calculate_grid_levels(actual_price, min_limit, max_limit, count_of_levels):
         'price_step': price_step
     }
 
-
-test_price = 60000.0
-grid = calculate_grid_levels(
-    test_price,
-    55000.0,
-    65000.0,
-    5
-)
-print(grid)
+if __name__ == "__main__":
+    test_price = 60000.0
+    grid = calculate_grid_levels(test_price, 55000.0, 65000.0, 5)
+    print("Test grid output:", grid)
