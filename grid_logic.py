@@ -67,7 +67,7 @@ async def init_grid(exchange, grid_config):
 
 
 async def monitor_grid(exchange, symbol, active_orders, price_step, quantity):
-    print(f"Rozpoczynam monitorowanie siatki dla {symbol} (Tryb REST API)...")
+
 
     while True:
         try:
@@ -76,7 +76,7 @@ async def monitor_grid(exchange, symbol, active_orders, price_step, quantity):
 
             for order_id in list(active_orders.keys()):
                 if order_id not in open_order_ids:
-                    order_data = await exchange.fetch_order(order_id, symbol)
+                    order_data = await exchange.fetch_order(order_id, symbol,params={'acknowledged': True})
 
                     if order_data['status'] == 'closed':
                         order_info = active_orders[order_id]
