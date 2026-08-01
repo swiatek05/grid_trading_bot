@@ -5,9 +5,9 @@ import pandas as pd
 import sqlite3
 
 SYMBOL = 'BTC/USDC'
-TIMEFRAME = '1m'
+TIMEFRAME = '15m'
 COUNT_OF_DAYS = 180
-OUTPUT_FILE = 'btc_usdc_history.db'
+OUTPUT_FILE = 'btc_usdc_history_15m.db'
 
 
 async def fetch_historical_candles(symbol, timeframe, count_of_days):
@@ -32,7 +32,7 @@ async def fetch_historical_candles(symbol, timeframe, count_of_days):
             last_time = candles[-1][0]
             since_ms = last_time + 1
 
-            if last_time >= int(datetime.now().timestamp() * 1000) - 60000:
+            if last_time >= int(datetime.now().timestamp() * 1000) - 900000:
                 break
             await asyncio.sleep(exchange.rateLimit / 1000)
     except Exception as e:
