@@ -5,9 +5,12 @@ def calculate_grid_levels(actual_price, min_limit, max_limit, count_of_levels):
     if actual_price < min_limit or actual_price > max_limit:
         print("Actual price is outside the range (min_limit, max_limit)")
 
-    price_step = (max_limit - min_limit) / (count_of_levels - 1)
+    #price_step = (max_limit - min_limit) / (count_of_levels - 1)
 
-    levels = [round(min_limit + i * price_step, 2) for i in range(count_of_levels)]
+    ratio=(max_limit/min_limit) ** (1/(count_of_levels-1))
+
+
+    levels = [round(min_limit * (ratio**i), 2) for i in range(count_of_levels)]
 
     buy_levels = [p for p in levels if p < actual_price]
     sell_levels = [p for p in levels if p > actual_price]
@@ -16,7 +19,7 @@ def calculate_grid_levels(actual_price, min_limit, max_limit, count_of_levels):
         'levels': levels,
         'buy_levels': buy_levels,
         'sell_levels': sell_levels,
-        'price_step': price_step
+        'price_ratio': ratio
     }
 
 if __name__ == "__main__":
