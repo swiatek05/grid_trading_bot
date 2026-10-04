@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 import os
 from db import add_transaction
 from grid_logic import init_grid, monitor_grid
-from dynamic_grid import get_dynamic_grid_params
-from retrainer import retrain_models_task, RETRAIN_INTERVAL_SECONDS
+from dynamic_grid import get_grid_params
+from retrainer import retrain_task, INTERVAL
 import asyncio
 
 load_dotenv()
@@ -40,68 +40,71 @@ async def main():
 
     })
     exchange.set_sandbox_mode(True)
-
-    exchange.urls['api']['ws'] = {
-        'public': 'wss://stream-testnet.bybit.eu/v5/public/spot',
-        'private': 'wss://stream-testnet.bybit.eu/v5/private',
-    }
     
-    # Start the background retraining task
-    asyncio.create_task(retrain_models_task())
+    #background retraining task
+    asyncio.create_task(retrain_task(INTERVAL))
 
     try:
 
         await sync_recent_trades(exchange,grid_config['symbol'])
 
         while True:
-            print(f"\n--- Initializing Grid for {grid_config['symbol']} ---")
-            
-            # 1. Calculate dynamic params based on current market and ML model
-            params = await get_dynamic_grid_params(exchange, grid_config['symbol'])
-            
-            if params is None:
-                print("Failed to calculate grid parameters. Retrying in 60 seconds...")
-                await asyncio.sleep(60)
-                continue
+            try:
+                print(f"\n--- Initializing Grid for {grid_config['symbol']} ---")
                 
-            # 2. Cooldown logic based on market conditions
-            if params['rsi'] > 70 or params['rsi'] < 30:
-                print(f"RSI is extreme ({params['rsi']:.2f}). Waiting 5 minutes for cooldown...")
-                await asyncio.sleep(300)
-                continue
+                #Calculate dynamic params
+                params = await get_grid_params(exchange, grid_config['symbol'])
                 
-            if params['ema_trend'] <= 0:
-                print(f"EMA Trend is negative ({params['ema_trend']:.4f}). Waiting 5 minutes for recovery...")
-                await asyncio.sleep(300)
-                continue
+                if params is None:
+                    print("Failed to calculate grid parameters. Retrying in 60 seconds...")
+                    await asyncio.sleep(60)
+                    continue
+                    
+                #Cooldown logic based on market conditions
+                if params['rsi'] > 70 or params['rsi'] < 30:
+                    print(f"RSI is extreme ({params['rsi']:.2f}). Waiting 5 minutes for cooldown...")
+                    await asyncio.sleep(300)
+                    continue
+                    
+                if params['ema_trend'] <= 0:
+                    print(f"EMA Trend is negative ({params['ema_trend']:.4f}). Waiting 5 minutes for recovery...")
+                    await asyncio.sleep(300)
+                    continue
 
-            # 3. Setup grid
-            active_orders, ratio = await init_grid(
-                exchange,
-                grid_config['symbol'],
-                params['lower_price'],
-                params['upper_price'],
-                params['count_of_levels'],
-                0.95
-            )
-            
-            if not active_orders:
-                print("Failed to initialize grid orders. Retrying in 60 seconds...")
+                #Setup grid
+                active_orders, ratio = await init_grid(
+                    exchange,
+                    grid_config['symbol'],
+                    params['lower_price'],
+                    params['upper_price'],
+                    params['count_of_levels'],
+                    0.95
+                )
+                
+                if not active_orders:
+                    print("Failed to initialize grid orders. Retrying in 60 seconds...")
+                    await asyncio.sleep(60)
+                    continue
+
+                #Monitor grid
+                reason = await monitor_grid(
+                    exchange,
+                    grid_config['symbol'],
+                    active_orders,
+                    ratio,
+                    params['lower_price'],
+                    params['upper_price']
+                )
+                
+                if reason == "STOP LOSS":
+                    print(f"\nGrid broken due to: {reason}. Liquidated to USDC. Waiting 15 minutes for market cooldown...")
+                    await asyncio.sleep(900)
+                else:
+                    print(f"\nGrid broken due to: {reason}. Liquidated to USDC. Re-evaluating market in 60 seconds...")
+                    await asyncio.sleep(60)
+            except Exception as e:
+                print(f"Unexpected error in main loop: {e}. Retrying in 60 seconds...")
                 await asyncio.sleep(60)
-                continue
-
-            # 4. Monitor grid
-            reason = await monitor_grid(
-                exchange,
-                grid_config['symbol'],
-                active_orders,
-                ratio,
-                params['lower_price'],
-                params['upper_price']
-            )
-            
-            print(f"\nGrid broken due to: {reason}. Liquidated to USDC. Re-evaluating market in 60 seconds...")
-            await asyncio.sleep(60)
 
     finally:
         await exchange.close()

@@ -2,6 +2,9 @@ import sqlite3
 import joblib
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from grid_strategy import calculate_grid_levels
 
@@ -19,6 +22,7 @@ def run_backtest(df, regime_data, title="Backtest"):
 
     capital_usdc = INITIAL_CAPITAL
     capital_btc = 0.0
+    equity_history = []
 
     active_orders = {}
     order_id_counter = 1
@@ -189,6 +193,9 @@ def run_backtest(df, regime_data, title="Backtest"):
                                                        'usdc_size': order.get('original_usdc_size', 0)}
                     order_id_counter += 1
 
+        total_equity = capital_usdc + (capital_btc * close)
+        equity_history.append(total_equity)
+
     final_price = df.iloc[-1]['close']
     if capital_btc > 0:
         usdc_gained = capital_btc * final_price
@@ -209,6 +216,8 @@ def run_backtest(df, regime_data, title="Backtest"):
     print(f"Stop Losses hit:  {stop_losses_hit}")
     print(f"Cost of fees:     {sum_of_fees:.2f} USDC")
     print("=" * 30 + "\n")
+    
+    return equity_history
 
 
 def main():
@@ -233,7 +242,17 @@ def main():
         print(f"Running backtests for {len(df)} records...\n")
 
         run_backtest(df, regime_data, title=f"FULL DATA - 100% ({len(df)} rows)")
-        run_backtest(test_df, regime_data, title=f"UNSEEN DATA - 20% ({len(test_df)} rows)")
+        test_equity = run_backtest(test_df, regime_data, title=f"UNSEEN DATA - 20% ({len(test_df)} rows)")
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(test_equity, label='Equity (USDC)')
+        plt.title('Equity Curve (Unseen Data)')
+        plt.xlabel('Time step (15m)')
+        plt.ylabel('USDC')
+        plt.grid(True)
+        plt.legend()
+        plt.savefig('backtest_chart.png')
+        print("Chart saved to backtest_chart.png")
 
     except Exception as e:
         print("error: ", e)

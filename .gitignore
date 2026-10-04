@@ -1,3 +1,6 @@
 .env
-database.db
-btc_usdc_history.db
+*.db
+*.joblib
+__pycache__/
+.idea/
+.coverage

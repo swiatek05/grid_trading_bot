@@ -1,0 +1,9 @@
+ccxt
+pandas
+pandas_ta
+numpy
+scikit-learn
+joblib
+python-dotenv
+matplotlib
+pytest

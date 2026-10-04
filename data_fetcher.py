@@ -6,7 +6,7 @@ import sqlite3
 
 SYMBOL = 'BTC/USDC'
 TIMEFRAME = '15m'
-COUNT_OF_DAYS = 180
+COUNT_OF_DAYS = 365
 OUTPUT_FILE = 'btc_usdc_history_15m.db'
 
 
